@@ -1,0 +1,193 @@
+package com.activitywebhook;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonParser;
+import java.lang.reflect.Proxy;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import net.runelite.api.Player;
+import okhttp3.OkHttpClient;
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import static org.junit.Assert.*;
+
+/** "Use my in-game name": off = typed Display name, on = local player's name, on + unavailable = send nothing. */
+public class PlayerNameTest
+{
+	private MockWebServer server;
+	private final TestSupport.Settings s = new TestSupport.Settings();
+	private EventSender sender;
+	private final TestSupport.MutableClock clock = new TestSupport.MutableClock(1_000_000);
+	private final WebhookEvent.Activity wc = new WebhookEvent.Activity("skilling", "Woodcutting", null);
+
+	/** Test-only stand-in for the game's Player (only getName is used). */
+	static Player player(String name)
+	{
+		return (Player) Proxy.newProxyInstance(Player.class.getClassLoader(), new Class<?>[]{Player.class},
+			(p, m, a) -> "getName".equals(m.getName()) ? name : null);
+	}
+
+	/** Player whose getName() calls are counted. */
+	static Player countingPlayer(String name, AtomicInteger calls)
+	{
+		return (Player) Proxy.newProxyInstance(Player.class.getClassLoader(), new Class<?>[]{Player.class},
+			(p, m, a) -> {
+				if ("getName".equals(m.getName()))
+				{
+					calls.incrementAndGet();
+					return name;
+				}
+				return null;
+			});
+	}
+
+	@Test
+	public void optionOffNeverCallsGetName()
+	{
+		AtomicInteger calls = new AtomicInteger();
+		Player me = countingPlayer("Zezima", calls);
+		String cached = null;
+		for (int tick = 0; tick < 100; tick++)
+		{
+			cached = ActivityWebhookPlugin.cachedName(false, cached, me);
+		}
+		assertNull(cached);
+		assertEquals("getName() must not be called with the option off", 0, calls.get());
+		// Turned on: read once, then cached; turned off again: cleared without another call.
+		cached = ActivityWebhookPlugin.cachedName(true, cached, me);
+		cached = ActivityWebhookPlugin.cachedName(true, cached, me);
+		assertEquals("Zezima", cached);
+		assertEquals(1, calls.get());
+		assertNull(ActivityWebhookPlugin.cachedName(false, cached, me));
+		assertEquals(1, calls.get());
+	}
+
+	@Before
+	public void up() throws Exception
+	{
+		server = new MockWebServer();
+		server.start(java.net.InetAddress.getByName("127.0.0.1"), 0);
+		sender = new EventSender(new OkHttpClient(), new Gson(), clock);
+		s.url = "http://127.0.0.1:" + server.getPort() + "/events";
+		s.name = "TypedAlias";
+	}
+
+	@After
+	public void down() throws Exception
+	{
+		server.shutdown();
+	}
+
+	private String sentPlayer() throws Exception
+	{
+		server.enqueue(new MockResponse().setResponseCode(204));
+		assertTrue(sender.tick(s, wc));
+		RecordedRequest r = server.takeRequest(5, TimeUnit.SECONDS);
+		return new JsonParser().parse(r.getBody().readUtf8()).getAsJsonObject().get("player").getAsString();
+	}
+
+	@Test
+	public void defaultIsOff()
+	{
+		assertFalse(new ActivityWebhookConfig() { }.useInGameName());
+	}
+
+	@Test
+	public void offUsesTypedNameEvenWhenInGameNameKnown() throws Exception
+	{
+		s.useInGame = false;
+		s.inGame = "Zezima";
+		assertEquals("TypedAlias", EventSender.activePlayer(s));
+		assertEquals("TypedAlias", sentPlayer());
+	}
+
+	@Test
+	public void onUsesInGameName() throws Exception
+	{
+		s.useInGame = true;
+		s.inGame = ActivityWebhookPlugin.readName(player("Zezima"));
+		assertEquals("Zezima", sentPlayer());
+	}
+
+	@Test
+	public void onWithBlankTypedNameStillSends() throws Exception
+	{
+		s.useInGame = true;
+		s.name = "";
+		s.inGame = "Zezima";
+		assertEquals("Zezima", sentPlayer());
+	}
+
+	@Test
+	public void onWithNullLocalPlayerSendsNothing() throws Exception
+	{
+		s.useInGame = true;
+		assertNull(ActivityWebhookPlugin.readName(null));
+		assertNull(ActivityWebhookPlugin.readName(player(null)));
+		assertNull(ActivityWebhookPlugin.readName(player("  ")));
+		s.inGame = ActivityWebhookPlugin.readName(null);
+		assertNull(EventSender.activePlayer(s));
+		sender.queueLogin(s);
+		sender.queueLevelUp(s, "Mining", 50);
+		assertFalse(sender.tick(s, wc));
+		assertNull(server.takeRequest(300, TimeUnit.MILLISECONDS));
+		assertEquals(0, server.getRequestCount());
+	}
+
+	/** Mirrors the plugin's per-tick flow: name read, pending login queued once sendable, then sender.tick. */
+	private void loginThenNameResolvesAfter(int ticks) throws Exception
+	{
+		s.useInGame = true;
+		s.name = "";
+		s.inGame = null;
+		boolean loginPending = true;   // GameState LOGGED_IN seen
+		for (int i = 0; i < 6; i++)
+		{
+			server.enqueue(new MockResponse().setResponseCode(204));
+		}
+		java.util.List<String> types = new java.util.ArrayList<>();
+		for (int tick = 0; tick < 30; tick++)
+		{
+			if (tick == ticks)
+			{
+				s.inGame = "Zezima";   // local player's name becomes readable on this tick
+			}
+			if (loginPending && EventSender.activePlayer(s) != null)
+			{
+				loginPending = false;
+				sender.queueLogin(s);
+			}
+			sender.tick(s, wc);
+			RecordedRequest r = server.takeRequest(200, TimeUnit.MILLISECONDS);
+			if (r != null)
+			{
+				com.google.gson.JsonObject o = new JsonParser().parse(r.getBody().readUtf8()).getAsJsonObject();
+				assertEquals("Zezima", o.get("player").getAsString());
+				types.add(o.get("type").getAsString());
+				long t0 = System.currentTimeMillis();
+				while (sender.throttle().inFlight() && System.currentTimeMillis() - t0 < 5000)
+				{
+					Thread.sleep(5);
+				}
+			}
+			clock.ms += 600;   // one game tick
+		}
+		assertEquals("exactly one login, then the activity", java.util.Arrays.asList("login", "activity"), types);
+	}
+
+	@Test
+	public void nameResolvingOneTickAfterLoginSendsOneLoginThenActivity() throws Exception
+	{
+		loginThenNameResolvesAfter(1);
+	}
+
+	@Test
+	public void nameResolvingThreeTicksAfterLoginSendsOneLoginThenActivity() throws Exception
+	{
+		loginThenNameResolvesAfter(3);
+	}
+}
