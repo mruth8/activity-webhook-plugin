@@ -21,7 +21,7 @@ Options: `&size=compact`, `&variant=…`, `&player=<your display name>` (only sh
 ## 3. Run RuneLite in developer mode with the plugin
 
 ```
-cd pixel-pet-pals-plugin   # repo checkout of the Activity Webhook plugin
+cd activity-webhook-plugin   # repo checkout of the Activity Webhook plugin
 ./gradlew run
 ```
 
