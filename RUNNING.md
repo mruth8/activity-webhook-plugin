@@ -31,7 +31,7 @@ plugin as a built-in and starts RuneLite with `--developer-mode --debug`. Log in
 
 Configuration → **Pixel Pet Pals** → section "Data sharing (third party)":
 
-1. Endpoint URL: `http://127.0.0.1:8787/events`
+1. Endpoint URL: `http://127.0.0.1:8787/events` (plain http is only allowed to localhost/127.0.0.1/[::1]; anything else needs https)
 2. Shared secret: same as `PET_SECRET` (or leave empty if the relay has none)
 3. Display name: whatever the widget should show, **or** turn on "Use my in-game name" to send your RuneScape name
    instead (this sends your RuneScape name to the relay; the Display name can then stay blank). If you filter the

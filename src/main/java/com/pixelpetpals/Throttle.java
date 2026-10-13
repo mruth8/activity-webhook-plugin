@@ -10,6 +10,7 @@ import java.util.Deque;
  * - One-shot events (level_up, login, logout) queue (max 5, oldest dropped) and also respect minIntervalMs,
  *   except "urgent" ones (logout), which only wait for backoff.
  * - One request in flight at a time. Failures back off exponentially: 5 s, 10 s, ... capped at 5 min.
+ * - A failed state change is retried (the state is still "unsent"); failed one-shots are dropped, not retried.
  */
 public class Throttle
 {
@@ -24,11 +25,14 @@ public class Throttle
 	{
 		public final Kind kind;
 		public final PetEvent event;
+		/** Generation the request belongs to; replies from an older generation (before a reset) are ignored. */
+		public final int generation;
 
-		Decision(Kind kind, PetEvent event)
+		Decision(Kind kind, PetEvent event, int generation)
 		{
 			this.kind = kind;
 			this.event = event;
+			this.generation = generation;
 		}
 	}
 
@@ -40,17 +44,24 @@ public class Throttle
 	private int failures;
 	private boolean inFlight;
 	private String inFlightStateKey;
+	private int generation;
 
+	/**
+	 * Forget everything (queue, sent state, backoff). A request still in flight belongs to the old generation: its
+	 * reply is ignored, so it can't set backoff on the fresh state. Until that reply arrives (or the call fails),
+	 * no new request starts, so two requests are never in flight at once.
+	 */
 	public synchronized void reset()
 	{
+		generation++;
 		oneShots.clear();
 		lastSentStateKey = null;
 		pendingStateKey = null;
 		lastSentAt = Long.MIN_VALUE / 2;
 		backoffUntil = Long.MIN_VALUE / 2;
 		failures = 0;
-		inFlight = false;
 		inFlightStateKey = null;
+		// inFlight is deliberately kept: the old request is still running.
 	}
 
 	public synchronized void queue(PetEvent e)
@@ -80,7 +91,7 @@ public class Throttle
 		if (head != null && (intervalOk || "logout".equals(head.getType())))
 		{
 			oneShots.removeFirst();
-			return start(now, null, new Decision(Kind.ONE_SHOT, head));
+			return start(now, null, new Decision(Kind.ONE_SHOT, head, generation));
 		}
 		if (!intervalOk)
 		{
@@ -88,11 +99,11 @@ public class Throttle
 		}
 		if (stateKey != null && !stateKey.equals(lastSentStateKey))
 		{
-			return start(now, stateKey, new Decision(Kind.STATE, stateEvent.get()));
+			return start(now, stateKey, new Decision(Kind.STATE, stateEvent.get(), generation));
 		}
 		if (now - lastSentAt >= HEARTBEAT_MS)
 		{
-			return start(now, null, new Decision(Kind.HEARTBEAT, heartbeatEvent.get()));
+			return start(now, null, new Decision(Kind.HEARTBEAT, heartbeatEvent.get(), generation));
 		}
 		return null;
 	}
@@ -105,9 +116,19 @@ public class Throttle
 		return d;
 	}
 
-	public synchronized void onResult(long now, boolean ok)
+	/** Drop queued events of one type (e.g. a stale logout when a new session starts). */
+	public synchronized void drop(String type)
 	{
-		inFlight = false;
+		oneShots.removeIf(e -> type.equals(e.getType()));
+	}
+
+	public synchronized void onResult(int gen, long now, boolean ok)
+	{
+		inFlight = false;   // whichever generation: the one request in flight has finished
+		if (gen != generation)
+		{
+			return;   // reply to a request from before a reset: ignore for state and backoff
+		}
 		if (ok)
 		{
 			failures = 0;
@@ -123,6 +144,16 @@ public class Throttle
 			backoffUntil = now + delay;
 		}
 		inFlightStateKey = null;
+	}
+
+	synchronized int gen()
+	{
+		return generation;
+	}
+
+	synchronized boolean inFlight()
+	{
+		return inFlight;
 	}
 
 	synchronized int failures()

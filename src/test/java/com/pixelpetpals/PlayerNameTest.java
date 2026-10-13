@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonParser;
 import java.lang.reflect.Proxy;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import net.runelite.api.Player;
 import okhttp3.OkHttpClient;
 import okhttp3.mockwebserver.MockResponse;
@@ -29,13 +30,48 @@ public class PlayerNameTest
 			(p, m, a) -> "getName".equals(m.getName()) ? name : null);
 	}
 
+	/** Player whose getName() calls are counted. */
+	static Player countingPlayer(String name, AtomicInteger calls)
+	{
+		return (Player) Proxy.newProxyInstance(Player.class.getClassLoader(), new Class<?>[]{Player.class},
+			(p, m, a) -> {
+				if ("getName".equals(m.getName()))
+				{
+					calls.incrementAndGet();
+					return name;
+				}
+				return null;
+			});
+	}
+
+	@Test
+	public void optionOffNeverCallsGetName()
+	{
+		AtomicInteger calls = new AtomicInteger();
+		Player me = countingPlayer("Zezima", calls);
+		String cached = null;
+		for (int tick = 0; tick < 100; tick++)
+		{
+			cached = PixelPetPalsPlugin.cachedName(false, cached, me);
+		}
+		assertNull(cached);
+		assertEquals("getName() must not be called with the option off", 0, calls.get());
+		// Turned on: read once, then cached; turned off again: cleared without another call.
+		cached = PixelPetPalsPlugin.cachedName(true, cached, me);
+		cached = PixelPetPalsPlugin.cachedName(true, cached, me);
+		assertEquals("Zezima", cached);
+		assertEquals(1, calls.get());
+		assertNull(PixelPetPalsPlugin.cachedName(false, cached, me));
+		assertEquals(1, calls.get());
+	}
+
 	@Before
 	public void up() throws Exception
 	{
 		server = new MockWebServer();
-		server.start();
+		server.start(java.net.InetAddress.getByName("127.0.0.1"), 0);
 		sender = new EventSender(new OkHttpClient(), new Gson(), new TestSupport.MutableClock(1_000_000));
-		s.url = server.url("/events").toString();
+		s.url = "http://127.0.0.1:" + server.getPort() + "/events";
 		s.name = "TypedAlias";
 	}
 

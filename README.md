@@ -5,7 +5,8 @@ Drives a pixel-pet stream widget from **your own** in-game activity. The plugin 
 (`node relay/server.js` from the Pixel Pet Pals companion repo), which feeds the widget page.
 
 > **Third-party data warning.** When enabled, this plugin sends your activity to a server you choose. That server
-> is **not controlled or verified by Jagex or RuneLite**. It is **off by default** and sends nothing until you
+> is **not controlled or verified by Jagex or RuneLite**. If you turn on "Use my in-game name", your **RuneScape
+> name** is sent to that server too. It is **off by default** and sends nothing until you
 > turn it on, set an endpoint URL and type a display name. Not affiliated with Jagex Ltd.
 
 No art is bundled. The pets live in the widget/pack repo, not in this plugin.
@@ -15,12 +16,12 @@ No art is bundled. The pets live in the widget/pack repo, not in this plugin.
 | key | default | meaning |
 |---|---|---|
 | `enabled` | **off** | Master switch. Off = nothing is sent. |
-| `endpointUrl` | empty | `http://` or `https://` URL, e.g. `http://127.0.0.1:8787/events`. Empty or invalid = nothing is sent. |
+| `endpointUrl` | empty | Must be `https://`, except plain `http://` to `localhost`, `127.0.0.1` or `[::1]` (a local relay), e.g. `http://127.0.0.1:8787/events`. Empty or invalid = nothing is sent. |
 | `sharedSecret` | empty | Optional. Sent as the `X-Pet-Secret` header; must match the relay's `PET_SECRET`. |
 | `displayName` | empty | The name put in the `player` field when "Use my in-game name" is off. **You type it.** Empty (with that option off) = nothing is sent. |
 | `useInGameName` | **off** | When on, the `player` field is **your RuneScape name**, read from the game, so it is sent to your chosen server. The typed Display name is then ignored (it may be blank). If the name can't be read yet (e.g. right after login or a world hop), nothing is sent until it can. |
 | `includeNpcName` | off | Adds the name of the NPC you are fighting to combat events. |
-| `minIntervalSeconds` | 5 (2–60) | Never send more often than this. |
+| `minIntervalSeconds` | 5 (5–60) | Never send more often than this; values below 5 s are treated as 5 s. |
 
 ## Exactly what is sent
 
@@ -51,7 +52,7 @@ items, inventory, bank contents, XP amounts, coordinates, client or system info.
 | `level_up` | one of your real skill levels goes up (queued, at most once per `minIntervalSeconds`) |
 | `heartbeat` | with your current activity, only after **60 s** with nothing else sent |
 
-With `useInGameName` on, the name is read from your own local player on the client thread (on a game tick) after
+With `useInGameName` off, the plugin never calls the game for your name. With it on, the name is read from your own local player on the client thread (on a game tick) after
 login and again after every world hop; it is used only for the `player` field. The `login` event is sent on the
 first tick where the player name is available.
 
@@ -65,8 +66,18 @@ How activity is derived, only from your own client state:
 
 Requests use RuneLite's shared `OkHttpClient` asynchronously (`enqueue`); the plugin starts no threads.
 At most one request is in flight. Errors (network, non-2xx) are logged at debug level only and back off
-exponentially: 5 s, 10 s, 20 s, … up to 5 min. A failed state change is retried after the backoff.
-Up to 5 queued one-off events (level-ups, login/logout) are kept; older ones are dropped.
+exponentially: 5 s, 10 s, 20 s, … up to 5 min.
+
+- A failed **state** change (`activity`/`idle`) is retried after the backoff, as fresh current state.
+- Failed **`level_up`, `login` and `logout`** events are **dropped, not retried**.
+- A `logout` that couldn't go out (blocked by backoff or an in-flight request) is **discarded at the next login**,
+  never sent stale.
+- Up to 5 queued one-off events are kept; older ones are dropped.
+- Nothing is queued while sending is off. When sending is (re-)enabled, or any plugin setting changes, the queue is
+  cleared and only the fresh current state is sent. A `login` from a session that started while sending was off is
+  never sent.
+- Replies to requests made before such a reset are ignored for backoff, and a new request never starts while an old
+  one is still in flight.
 
 ## Build & test
 

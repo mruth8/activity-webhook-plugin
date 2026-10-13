@@ -47,6 +47,7 @@ public class EventSender
 	private final Clock clock;
 	private final Throttle throttle = new Throttle();
 	private final EventFactory factory;
+	private boolean active;
 
 	public EventSender(OkHttpClient http, Gson gson, Clock clock)
 	{
@@ -66,7 +67,13 @@ public class EventSender
 		return throttle;
 	}
 
-	/** Parsed endpoint, or null if empty/invalid/not http(s). */
+	public static final int MIN_INTERVAL_SECONDS = 5;
+	public static final int MAX_INTERVAL_SECONDS = 60;
+
+	/**
+	 * Parsed endpoint, or null if empty/invalid. https is required, except plain http to a loopback host
+	 * (localhost, 127.0.0.1, ::1) for a local relay.
+	 */
 	public static HttpUrl endpoint(String url)
 	{
 		if (url == null || url.trim().isEmpty())
@@ -74,7 +81,26 @@ public class EventSender
 			return null;
 		}
 		HttpUrl u = HttpUrl.parse(url.trim());
-		return u != null && ("http".equals(u.scheme()) || "https".equals(u.scheme())) ? u : null;
+		if (u == null)
+		{
+			return null;
+		}
+		if ("https".equals(u.scheme()))
+		{
+			return u;
+		}
+		return "http".equals(u.scheme()) && isLoopback(u.host()) ? u : null;
+	}
+
+	static boolean isLoopback(String host)
+	{
+		return "localhost".equalsIgnoreCase(host) || "127.0.0.1".equals(host) || "::1".equals(host) || "[::1]".equals(host);
+	}
+
+	/** Min interval in ms, clamped to 5-60 s whatever the config says. */
+	static long minIntervalMs(int seconds)
+	{
+		return Math.max(MIN_INTERVAL_SECONDS, Math.min(MAX_INTERVAL_SECONDS, seconds)) * 1000L;
 	}
 
 	/** Player to send as, or null when sending is off (disabled / no valid URL / no display name, or in-game name on but unavailable). */
@@ -101,6 +127,7 @@ public class EventSender
 		String p = activePlayer(s);
 		if (p != null)
 		{
+			throttle.drop("logout");   // a logout that never got out is stale now: discard it
 			throttle.queue(factory.login(p));
 		}
 	}
@@ -117,6 +144,7 @@ public class EventSender
 	public void reset()
 	{
 		throttle.reset();
+		active = false;
 	}
 
 	/** Call once per game tick (and on logout). current may be null when not logged in. Returns true if a request was enqueued. */
@@ -125,11 +153,21 @@ public class EventSender
 		String player = activePlayer(s);
 		if (player == null)
 		{
-			throttle.reset();
+			if (active)
+			{
+				throttle.reset();
+			}
+			active = false;
 			return false;
 		}
+		if (!active)
+		{
+			// Just enabled (or URL/name became valid): start clean, send fresh current state only.
+			throttle.reset();
+			active = true;
+		}
 		long now = clock.millis();
-		long minMs = Math.max(2, Math.min(60, s.minIntervalSeconds())) * 1000L;
+		long minMs = minIntervalMs(s.minIntervalSeconds());
 		Throttle.Decision d = throttle.decide(now, minMs, current == null ? null : current.key(),
 			() -> factory.state(player, current),
 			() -> factory.heartbeat(player, current));
@@ -137,11 +175,11 @@ public class EventSender
 		{
 			return false;
 		}
-		post(endpoint(s.endpointUrl()), s.sharedSecret(), d.event);
+		post(endpoint(s.endpointUrl()), s.sharedSecret(), d.event, d.generation);
 		return true;
 	}
 
-	private void post(HttpUrl url, String secret, PetEvent e)
+	private void post(HttpUrl url, String secret, PetEvent e, int gen)
 	{
 		Request.Builder rb = new Request.Builder().url(url).post(RequestBody.create(JSON, gson.toJson(e)));
 		if (secret != null && !secret.isEmpty())
@@ -156,7 +194,7 @@ public class EventSender
 				public void onFailure(Call call, IOException ex)
 				{
 					log.debug("pixel pet pals: send failed: {}", ex.toString());
-					throttle.onResult(clock.millis(), false);
+					throttle.onResult(gen, clock.millis(), false);
 				}
 
 				@Override
@@ -169,7 +207,7 @@ public class EventSender
 						{
 							log.debug("pixel pet pals: endpoint answered HTTP {}", r.code());
 						}
-						throttle.onResult(clock.millis(), ok);
+						throttle.onResult(gen, clock.millis(), ok);
 					}
 				}
 			});
@@ -177,7 +215,7 @@ public class EventSender
 		catch (RuntimeException ex)
 		{
 			log.debug("pixel pet pals: could not enqueue: {}", ex.toString());
-			throttle.onResult(clock.millis(), false);
+			throttle.onResult(gen, clock.millis(), false);
 		}
 	}
 }

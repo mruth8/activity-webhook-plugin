@@ -67,13 +67,26 @@ public class PixelPetPalsPlugin extends Plugin
 
 		public boolean useInGameName() { return config.useInGameName(); }
 
-		public String inGameName() { return inGameName; }
+		public String inGameName() { return config.useInGameName() ? inGameName : null; }
 	};
 
 	/** Local player's name, read on the client thread once logged in; null until then (and after logout/hop). */
 	private volatile String inGameName;
 	/** Login seen; the login event is queued on the first tick where the player name can be resolved. */
 	private boolean loginPending;
+
+	/**
+	 * Name to cache after this tick: null when the option is off (getName() is then never called), the cached
+	 * value when already known, else a fresh null-safe read.
+	 */
+	static String cachedName(boolean useInGameName, String cached, Player me)
+	{
+		if (!useInGameName)
+		{
+			return null;
+		}
+		return cached != null ? cached : readName(me);
+	}
 
 	/** Null-safe read of the local player's own name. */
 	static String readName(Player me)
@@ -161,7 +174,9 @@ public class PixelPetPalsPlugin extends Plugin
 	{
 		if (PixelPetPalsConfig.GROUP.equals(e.getGroup()) && sender != null)
 		{
-			sender.reset();   // re-send current state to the (possibly new) endpoint
+			// Off: forget the name. On: it is re-read on the next game tick (client thread).
+			inGameName = null;
+			sender.reset();   // drop anything queued; re-send fresh current state to the (possibly new) endpoint
 		}
 	}
 
@@ -174,14 +189,19 @@ public class PixelPetPalsPlugin extends Plugin
 		{
 			return;
 		}
-		if (inGameName == null)
+		// Only read our own name when the user opted in to sending it.
+		inGameName = cachedName(config.useInGameName(), inGameName, me);
+		if (loginPending)
 		{
-			inGameName = readName(me);
-		}
-		if (loginPending && EventSender.activePlayer(settings) != null)
-		{
-			loginPending = false;
-			sender.queueLogin(settings);
+			if (!config.enabled())
+			{
+				loginPending = false;   // logged in while sending was off: no stale login later
+			}
+			else if (EventSender.activePlayer(settings) != null)
+			{
+				loginPending = false;
+				sender.queueLogin(settings);
+			}
 		}
 		Actor target = me.getInteracting();
 		String npcName = target instanceof NPC ? target.getName() : null;   // other players are ignored

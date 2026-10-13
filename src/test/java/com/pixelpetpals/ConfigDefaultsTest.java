@@ -18,5 +18,6 @@ public class ConfigDefaultsTest
 		assertFalse(c.includeNpcName());
 		assertFalse("in-game name is off by default", c.useInGameName());
 		assertEquals(5, c.minIntervalSeconds());
+		assertEquals(EventSender.MIN_INTERVAL_SECONDS, 5);
 	}
 }

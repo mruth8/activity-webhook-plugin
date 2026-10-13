@@ -16,6 +16,7 @@ public interface PixelPetPalsConfig extends Config
 		name = "Data sharing (third party)",
 		description = "WARNING: when enabled, this plugin sends your activity (skilling/combat/banking/idle state and level-ups) "
 			+ "to a server YOU choose. That server is not controlled or verified by Jagex or RuneLite. "
+			+ "If you also turn on 'Use my in-game name', your RuneScape name is sent too. "
 			+ "Only enable it with an endpoint you trust. Nothing is sent while disabled or with no endpoint set.",
 		position = 0
 	)
@@ -36,7 +37,7 @@ public interface PixelPetPalsConfig extends Config
 	@ConfigItem(
 		keyName = "endpointUrl",
 		name = "Endpoint URL",
-		description = "http(s) URL that receives the events, e.g. http://127.0.0.1:8787/events. Empty = send nothing.",
+		description = "URL that receives the events. https:// is required, except http:// to localhost, 127.0.0.1 or [::1], e.g. http://127.0.0.1:8787/events. Empty = send nothing.",
 		section = sharingSection,
 		position = 1
 	)
@@ -95,12 +96,12 @@ public interface PixelPetPalsConfig extends Config
 		return false;
 	}
 
-	@Range(min = 2, max = 60)
+	@Range(min = 5, max = 60)
 	@Units(Units.SECONDS)
 	@ConfigItem(
 		keyName = "minIntervalSeconds",
 		name = "Minimum interval",
-		description = "Never send more often than this (2-60 s). A heartbeat is sent at most every 60 s.",
+		description = "Never send more often than this (5-60 s). A heartbeat is sent at most every 60 s.",
 		section = sharingSection,
 		position = 6
 	)
