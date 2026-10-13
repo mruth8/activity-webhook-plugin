@@ -34,6 +34,12 @@ public class EventSender
 		String displayName();
 
 		int minIntervalSeconds();
+
+		/** "Use my in-game name". */
+		boolean useInGameName();
+
+		/** The local player's name as last read on the client thread, or null if unavailable. */
+		String inGameName();
 	}
 
 	private final OkHttpClient http;
@@ -71,14 +77,14 @@ public class EventSender
 		return u != null && ("http".equals(u.scheme()) || "https".equals(u.scheme())) ? u : null;
 	}
 
-	/** Player to send as, or null when sending is off (disabled / no valid URL / no display name). */
+	/** Player to send as, or null when sending is off (disabled / no valid URL / no display name, or in-game name on but unavailable). */
 	public static String activePlayer(Settings s)
 	{
 		if (!s.enabled() || endpoint(s.endpointUrl()) == null)
 		{
 			return null;
 		}
-		return EventFactory.cleanPlayer(s.displayName());
+		return EventFactory.cleanPlayer(s.useInGameName() ? s.inGameName() : s.displayName());
 	}
 
 	public void queueLevelUp(Settings s, String skill, int level)

@@ -71,11 +71,24 @@ public interface PixelPetPalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "useInGameName",
+		name = "Use my in-game name",
+		description = "Off by default. When on, the 'player' field is your RuneScape name, read from the game, so your "
+			+ "RuneScape name is sent to your chosen server (not controlled by Jagex or RuneLite). When off, the Display name above is used.",
+		section = sharingSection,
+		position = 4
+	)
+	default boolean useInGameName()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "includeNpcName",
 		name = "Include NPC name in combat",
 		description = "Off by default. When on, combat events include the name of the NPC you are fighting. Other players are never sent.",
 		section = sharingSection,
-		position = 4
+		position = 5
 	)
 	default boolean includeNpcName()
 	{
@@ -89,7 +102,7 @@ public interface PixelPetPalsConfig extends Config
 		name = "Minimum interval",
 		description = "Never send more often than this (2-60 s). A heartbeat is sent at most every 60 s.",
 		section = sharingSection,
-		position = 5
+		position = 6
 	)
 	default int minIntervalSeconds()
 	{

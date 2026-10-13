@@ -48,6 +48,8 @@ final class TestSupport
 		String secret = "";
 		String name = "Matthew";
 		int minInterval = 5;
+		boolean useInGame = false;
+		String inGame = null;
 
 		public boolean enabled() { return enabled; }
 
@@ -58,6 +60,10 @@ final class TestSupport
 		public String displayName() { return name; }
 
 		public int minIntervalSeconds() { return minInterval; }
+
+		public boolean useInGameName() { return useInGame; }
+
+		public String inGameName() { return inGame; }
 	}
 
 	private TestSupport()

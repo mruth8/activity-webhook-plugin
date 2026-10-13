@@ -16,6 +16,7 @@ public class ConfigDefaultsTest
 		assertEquals("", c.sharedSecret());
 		assertEquals("", c.displayName());
 		assertFalse(c.includeNpcName());
+		assertFalse("in-game name is off by default", c.useInGameName());
 		assertEquals(5, c.minIntervalSeconds());
 	}
 }

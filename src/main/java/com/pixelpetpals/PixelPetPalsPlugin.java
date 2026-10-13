@@ -26,7 +26,8 @@ import okhttp3.OkHttpClient;
 /**
  * Pixel Pet Pals: sends the local player's own activity (event format v1) to a user-chosen endpoint.
  * Off by default. Reads only: own stats (StatChanged), own animation, own interacting target if it is an NPC,
- * and whether the bank interface is open. Never reads chat, other players, location or the account name.
+ * and whether the bank interface is open. Never reads chat, other players or location. The local player's own name
+ * is read only when "Use my in-game name" is on (it is used for nothing else).
  */
 @Slf4j
 @PluginDescriptor(
@@ -63,7 +64,27 @@ public class PixelPetPalsPlugin extends Plugin
 		public String displayName() { return config.displayName(); }
 
 		public int minIntervalSeconds() { return config.minIntervalSeconds(); }
+
+		public boolean useInGameName() { return config.useInGameName(); }
+
+		public String inGameName() { return inGameName; }
 	};
+
+	/** Local player's name, read on the client thread once logged in; null until then (and after logout/hop). */
+	private volatile String inGameName;
+	/** Login seen; the login event is queued on the first tick where the player name can be resolved. */
+	private boolean loginPending;
+
+	/** Null-safe read of the local player's own name. */
+	static String readName(Player me)
+	{
+		if (me == null)
+		{
+			return null;
+		}
+		String n = me.getName();
+		return n == null || n.trim().isEmpty() ? null : n;
+	}
 
 	@Override
 	protected void startUp()
@@ -71,6 +92,7 @@ public class PixelPetPalsPlugin extends Plugin
 		sender = new EventSender(okHttpClient, gson, Clock.systemUTC());
 		tracker.reset(client.getTickCount());
 		loggedIn = client.getGameState() == GameState.LOGGED_IN;
+		inGameName = null;   // read on the next game tick (client thread)
 	}
 
 	@Override
@@ -87,18 +109,21 @@ public class PixelPetPalsPlugin extends Plugin
 		if (s == GameState.LOGGING_IN || s == GameState.HOPPING)
 		{
 			tracker.reset(client.getTickCount());
+			inGameName = null;   // re-read after login / world hop
 		}
 		else if (s == GameState.LOGGED_IN && !loggedIn)
 		{
 			loggedIn = true;
-			sender.queueLogin(settings);
+			loginPending = true;
 		}
 		else if (s == GameState.LOGIN_SCREEN && loggedIn)
 		{
 			loggedIn = false;
 			tracker.reset(client.getTickCount());
-			sender.queueLogout(settings);
+			loginPending = false;
+			sender.queueLogout(settings);   // still uses the name read while logged in
 			sender.tick(settings, null);   // no game ticks at the login screen; logout skips the min interval
+			inGameName = null;
 		}
 	}
 
@@ -143,10 +168,20 @@ public class PixelPetPalsPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick t)
 	{
+		// GameTick runs on the client thread, only while logged in: the right place to read the local player.
 		Player me = client.getLocalPlayer();
 		if (me == null)
 		{
 			return;
+		}
+		if (inGameName == null)
+		{
+			inGameName = readName(me);
+		}
+		if (loginPending && EventSender.activePlayer(settings) != null)
+		{
+			loginPending = false;
+			sender.queueLogin(settings);
 		}
 		Actor target = me.getInteracting();
 		String npcName = target instanceof NPC ? target.getName() : null;   // other players are ignored

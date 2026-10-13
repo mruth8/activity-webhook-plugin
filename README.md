@@ -17,7 +17,8 @@ No art is bundled. The pets live in the widget/pack repo, not in this plugin.
 | `enabled` | **off** | Master switch. Off = nothing is sent. |
 | `endpointUrl` | empty | `http://` or `https://` URL, e.g. `http://127.0.0.1:8787/events`. Empty or invalid = nothing is sent. |
 | `sharedSecret` | empty | Optional. Sent as the `X-Pet-Secret` header; must match the relay's `PET_SECRET`. |
-| `displayName` | empty | The name put in the `player` field. **You type it**; the plugin never reads your account name. Empty = nothing is sent. |
+| `displayName` | empty | The name put in the `player` field when "Use my in-game name" is off. **You type it.** Empty (with that option off) = nothing is sent. |
+| `useInGameName` | **off** | When on, the `player` field is **your RuneScape name**, read from the game, so it is sent to your chosen server. The typed Display name is then ignored (it may be blank). If the name can't be read yet (e.g. right after login or a world hop), nothing is sent until it can. |
 | `includeNpcName` | off | Adds the name of the NPC you are fighting to combat events. |
 | `minIntervalSeconds` | 5 (2–60) | Never send more often than this. |
 
@@ -29,7 +30,7 @@ if set, `X-Pet-Secret: <sharedSecret>`. The body is one v1 event with these fiel
 | field | value |
 |---|---|
 | `v` | always `1` |
-| `player` | your typed `displayName` (trimmed, max 64 chars) |
+| `player` | your typed `displayName`, or, only if `useInGameName` is on, your RuneScape name from the game (trimmed, max 64 chars) |
 | `ts` | send time, ISO 8601 UTC to the second, e.g. `2026-10-13T16:50:14Z` |
 | `type` | one of `login`, `logout`, `activity`, `idle`, `level_up`, `heartbeat` |
 | `activity.category` | `skilling`, `combat`, `banking` or `idle` (on `activity`, `idle` and `heartbeat` events) |
@@ -37,7 +38,7 @@ if set, `X-Pet-Secret: <sharedSecret>`. The body is one v1 event with these fiel
 | `activity.target` | the NPC's name, **only** for `combat` and **only** if `includeNpcName` is on |
 | `detail.skill`, `detail.level` | only on `level_up`: the skill name and your new real level |
 
-Never sent: other players (names or anything else), chat, location/region/world, your account name or login,
+Never sent: other players (names or anything else), chat, location/region/world, your RuneScape name (unless you turn on `useInGameName`), your login/email,
 items, inventory, bank contents, XP amounts, coordinates, client or system info. `activity.region` is never set.
 
 ### When
@@ -49,6 +50,10 @@ items, inventory, bank contents, XP amounts, coordinates, client or system info.
 | `activity` / `idle` | your derived activity **changes** (see below), at most once per `minIntervalSeconds` |
 | `level_up` | one of your real skill levels goes up (queued, at most once per `minIntervalSeconds`) |
 | `heartbeat` | with your current activity, only after **60 s** with nothing else sent |
+
+With `useInGameName` on, the name is read from your own local player on the client thread (on a game tick) after
+login and again after every world hop; it is used only for the `player` field. The `login` event is sent on the
+first tick where the player name is available.
 
 How activity is derived, only from your own client state:
 - **banking**: the bank interface is open.
