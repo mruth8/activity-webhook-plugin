@@ -1,4 +1,4 @@
-package com.pixelpetpals;
+package com.activitywebhook;
 
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
@@ -7,10 +7,10 @@ import net.runelite.client.config.ConfigSection;
 import net.runelite.client.config.Range;
 import net.runelite.client.config.Units;
 
-@ConfigGroup(PixelPetPalsConfig.GROUP)
-public interface PixelPetPalsConfig extends Config
+@ConfigGroup(ActivityWebhookConfig.GROUP)
+public interface ActivityWebhookConfig extends Config
 {
-	String GROUP = "pixelpetpals";
+	String GROUP = "activitywebhook";
 
 	@ConfigSection(
 		name = "Data sharing (third party)",
@@ -49,7 +49,7 @@ public interface PixelPetPalsConfig extends Config
 	@ConfigItem(
 		keyName = "sharedSecret",
 		name = "Shared secret",
-		description = "Optional. Sent as the X-Pet-Secret header; must match the relay's PET_SECRET.",
+		description = "Optional shared secret, sent as the X-Pet-Secret header (e.g. the Pixel Pet Pals relay's PET_SECRET).",
 		secret = true,
 		section = sharingSection,
 		position = 2

@@ -1,4 +1,4 @@
-package com.pixelpetpals;
+package com.activitywebhook;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -47,7 +47,7 @@ public class EventFactoryTest
 		}
 	}
 
-	private JsonObject json(PetEvent e)
+	private JsonObject json(WebhookEvent e)
 	{
 		return new JsonParser().parse(gson.toJson(e)).getAsJsonObject();
 	}
@@ -55,10 +55,10 @@ public class EventFactoryTest
 	@Test
 	public void skillingEventHasExactlyTheV1Fields()
 	{
-		JsonObject o = json(f.state("Matthew", new PetEvent.Activity("skilling", "Woodcutting", null)));
+		JsonObject o = json(f.state("Matthew", new WebhookEvent.Activity("skilling", "Woodcutting", null)));
 		assertValidV1(o);
 		assertEquals("{\"v\":1,\"player\":\"Matthew\",\"ts\":\"2025-10-09T08:53:20Z\",\"type\":\"activity\",\"activity\":{\"category\":\"skilling\",\"skill\":\"Woodcutting\"}}",
-			gson.toJson(f.state("Matthew", new PetEvent.Activity("skilling", "Woodcutting", null))));
+			gson.toJson(f.state("Matthew", new WebhookEvent.Activity("skilling", "Woodcutting", null))));
 	}
 
 	@Test
@@ -69,15 +69,15 @@ public class EventFactoryTest
 		assertEquals("idle", idle.get("type").getAsString());
 		assertEquals("idle", idle.getAsJsonObject("activity").get("category").getAsString());
 
-		JsonObject hb = json(f.heartbeat("M", new PetEvent.Activity("banking", null, null)));
+		JsonObject hb = json(f.heartbeat("M", new WebhookEvent.Activity("banking", null, null)));
 		assertValidV1(hb);
 		assertEquals("heartbeat", hb.get("type").getAsString());
 
-		JsonObject combat = json(f.state("M", new PetEvent.Activity("combat", null, null)));
+		JsonObject combat = json(f.state("M", new WebhookEvent.Activity("combat", null, null)));
 		assertValidV1(combat);
 		assertEquals(1, combat.getAsJsonObject("activity").keySet().size());
 
-		JsonObject npc = json(f.state("M", new PetEvent.Activity("combat", null, "Hill Giant")));
+		JsonObject npc = json(f.state("M", new WebhookEvent.Activity("combat", null, "Hill Giant")));
 		assertValidV1(npc);
 		assertEquals("Hill Giant", npc.getAsJsonObject("activity").get("target").getAsString());
 	}

@@ -1,4 +1,4 @@
-package com.pixelpetpals;
+package com.activitywebhook;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -24,11 +24,11 @@ public class Throttle
 	public static final class Decision
 	{
 		public final Kind kind;
-		public final PetEvent event;
+		public final WebhookEvent event;
 		/** Generation the request belongs to; replies from an older generation (before a reset) are ignored. */
 		public final int generation;
 
-		Decision(Kind kind, PetEvent event, int generation)
+		Decision(Kind kind, WebhookEvent event, int generation)
 		{
 			this.kind = kind;
 			this.event = event;
@@ -36,7 +36,7 @@ public class Throttle
 		}
 	}
 
-	private final Deque<PetEvent> oneShots = new ArrayDeque<>();
+	private final Deque<WebhookEvent> oneShots = new ArrayDeque<>();
 	private String lastSentStateKey;
 	private String pendingStateKey;
 	private long lastSentAt = Long.MIN_VALUE / 2;
@@ -64,7 +64,7 @@ public class Throttle
 		// inFlight is deliberately kept: the old request is still running.
 	}
 
-	public synchronized void queue(PetEvent e)
+	public synchronized void queue(WebhookEvent e)
 	{
 		if (oneShots.size() >= MAX_QUEUE)
 		{
@@ -79,7 +79,7 @@ public class Throttle
 	 * @param heartbeatEvent builds the heartbeat if it is chosen
 	 */
 	public synchronized Decision decide(long now, long minIntervalMs, String stateKey,
-		java.util.function.Supplier<PetEvent> stateEvent, java.util.function.Supplier<PetEvent> heartbeatEvent)
+		java.util.function.Supplier<WebhookEvent> stateEvent, java.util.function.Supplier<WebhookEvent> heartbeatEvent)
 	{
 		pendingStateKey = stateKey;
 		if (inFlight || now < backoffUntil)
@@ -87,7 +87,7 @@ public class Throttle
 			return null;
 		}
 		boolean intervalOk = now - lastSentAt >= minIntervalMs;
-		PetEvent head = oneShots.peekFirst();
+		WebhookEvent head = oneShots.peekFirst();
 		if (head != null && (intervalOk || "logout".equals(head.getType())))
 		{
 			oneShots.removeFirst();

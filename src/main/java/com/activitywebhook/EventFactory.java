@@ -1,4 +1,4 @@
-package com.pixelpetpals;
+package com.activitywebhook;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -38,32 +38,32 @@ public final class EventFactory
 		return Instant.now(clock).truncatedTo(ChronoUnit.SECONDS).toString();
 	}
 
-	public PetEvent state(String player, PetEvent.Activity a)
+	public WebhookEvent state(String player, WebhookEvent.Activity a)
 	{
 		String type = "idle".equals(a.getCategory()) ? "idle" : "activity";
-		return new PetEvent(player, now(), type, a, null);
+		return new WebhookEvent(player, now(), type, a, null);
 	}
 
-	public PetEvent heartbeat(String player, PetEvent.Activity current)
+	public WebhookEvent heartbeat(String player, WebhookEvent.Activity current)
 	{
-		return new PetEvent(player, now(), "heartbeat", current, null);
+		return new WebhookEvent(player, now(), "heartbeat", current, null);
 	}
 
-	public PetEvent levelUp(String player, String skill, int level)
+	public WebhookEvent levelUp(String player, String skill, int level)
 	{
 		Map<String, Object> d = new LinkedHashMap<>();
 		d.put("skill", skill);
 		d.put("level", level);
-		return new PetEvent(player, now(), "level_up", null, d);
+		return new WebhookEvent(player, now(), "level_up", null, d);
 	}
 
-	public PetEvent login(String player)
+	public WebhookEvent login(String player)
 	{
-		return new PetEvent(player, now(), "login", null, null);
+		return new WebhookEvent(player, now(), "login", null, null);
 	}
 
-	public PetEvent logout(String player)
+	public WebhookEvent logout(String player)
 	{
-		return new PetEvent(player, now(), "logout", null, null);
+		return new WebhookEvent(player, now(), "logout", null, null);
 	}
 }

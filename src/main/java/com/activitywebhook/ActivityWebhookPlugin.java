@@ -1,4 +1,4 @@
-package com.pixelpetpals;
+package com.activitywebhook;
 
 import com.google.gson.Gson;
 import com.google.inject.Provides;
@@ -24,24 +24,25 @@ import net.runelite.client.plugins.PluginDescriptor;
 import okhttp3.OkHttpClient;
 
 /**
- * Pixel Pet Pals: sends the local player's own activity (event format v1) to a user-chosen endpoint.
+ * Activity Webhook: sends the local player's own activity (event format v1) to a user-chosen endpoint.
  * Off by default. Reads only: own stats (StatChanged), own animation, own interacting target if it is an NPC,
  * and whether the bank interface is open. Never reads chat, other players or location. The local player's own name
  * is read only when "Use my in-game name" is on (it is used for nothing else).
  */
 @Slf4j
 @PluginDescriptor(
-	name = "Pixel Pet Pals",
-	description = "Drives a pixel pet stream widget from your own activity. Sends data to a server you choose (third party). Off by default.",
-	tags = {"pet", "widget", "stream", "overlay", "third-party"}
+	name = "Activity Webhook",
+	description = "Sends your own activity (skilling, combat, banking, idle, level-ups) as JSON to a webhook URL you choose "
+		+ "(third party, not controlled by Jagex or RuneLite). Off by default. Not affiliated with Jagex.",
+	tags = {"webhook", "activity", "export", "stream", "overlay", "third-party"}
 )
-public class PixelPetPalsPlugin extends Plugin
+public class ActivityWebhookPlugin extends Plugin
 {
 	@Inject
 	private Client client;
 
 	@Inject
-	private PixelPetPalsConfig config;
+	private ActivityWebhookConfig config;
 
 	@Inject
 	private OkHttpClient okHttpClient;
@@ -172,7 +173,7 @@ public class PixelPetPalsPlugin extends Plugin
 	@Subscribe
 	public void onConfigChanged(ConfigChanged e)
 	{
-		if (PixelPetPalsConfig.GROUP.equals(e.getGroup()) && sender != null)
+		if (ActivityWebhookConfig.GROUP.equals(e.getGroup()) && sender != null)
 		{
 			// Off: forget the name. On: it is re-read on the next game tick (client thread).
 			inGameName = null;
@@ -205,14 +206,14 @@ public class PixelPetPalsPlugin extends Plugin
 		}
 		Actor target = me.getInteracting();
 		String npcName = target instanceof NPC ? target.getName() : null;   // other players are ignored
-		PetEvent.Activity a = tracker.tick(client.getTickCount(), me.getAnimation() != -1,
+		WebhookEvent.Activity a = tracker.tick(client.getTickCount(), me.getAnimation() != -1,
 			npcName == null ? null : npcName, config.includeNpcName());
 		sender.tick(settings, a);
 	}
 
 	@Provides
-	PixelPetPalsConfig provideConfig(ConfigManager configManager)
+	ActivityWebhookConfig provideConfig(ConfigManager configManager)
 	{
-		return configManager.getConfig(PixelPetPalsConfig.class);
+		return configManager.getConfig(ActivityWebhookConfig.class);
 	}
 }

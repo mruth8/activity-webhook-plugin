@@ -1,4 +1,4 @@
-package com.pixelpetpals;
+package com.activitywebhook;
 
 import org.junit.Test;
 import static org.junit.Assert.*;
@@ -8,7 +8,7 @@ public class ConfigDefaultsTest
 	@Test
 	public void offByDefaultAndNothingConfigured()
 	{
-		PixelPetPalsConfig c = new PixelPetPalsConfig()
+		ActivityWebhookConfig c = new ActivityWebhookConfig()
 		{
 		};
 		assertFalse(c.enabled());

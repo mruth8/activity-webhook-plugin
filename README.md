@@ -1,15 +1,15 @@
-# Pixel Pet Pals (RuneLite plugin)
+# Activity Webhook (RuneLite plugin)
 
-Drives a pixel-pet stream widget from **your own** in-game activity. The plugin sends small JSON events
-(event format v1) to an HTTP endpoint **you** choose, usually your own relay
-(`node relay/server.js` from the Pixel Pet Pals companion repo), which feeds the widget page.
+A general activity exporter: sends small JSON events about **your own** in-game activity (event format v1) to an
+HTTP endpoint **you** choose. One example receiver is the relay from the Pixel Pet Pals project
+(`node relay/server.js` in its companion repo), which drives a pixel-pet stream widget.
 
 > **Third-party data warning.** When enabled, this plugin sends your activity to a server you choose. That server
 > is **not controlled or verified by Jagex or RuneLite**. If you turn on "Use my in-game name", your **RuneScape
 > name** is sent to that server too. It is **off by default** and sends nothing until you
 > turn it on, set an endpoint URL and type a display name. Not affiliated with Jagex Ltd.
 
-No art is bundled. The pets live in the widget/pack repo, not in this plugin.
+No art is bundled; the plugin only sends data.
 
 ## Config (section "Data sharing (third party)")
 
@@ -26,7 +26,7 @@ No art is bundled. The pets live in the widget/pack repo, not in this plugin.
 ## Exactly what is sent
 
 One HTTP `POST` per event to **`endpointUrl`** (and nowhere else), with `Content-Type: application/json` and,
-if set, `X-Pet-Secret: <sharedSecret>`. The body is one v1 event with these fields only:
+if set, `X-Pet-Secret: <sharedSecret>` (header name kept for compatibility with the Pixel Pet Pals relay). The body is one v1 event with these fields only:
 
 | field | value |
 |---|---|

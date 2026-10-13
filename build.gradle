@@ -14,7 +14,7 @@ repositories {
 }
 
 def runeLiteVersion = 'latest.release'
-def pluginMainClass = 'com.pixelpetpals.PixelPetPalsPluginTest'
+def pluginMainClass = 'com.activitywebhook.ActivityWebhookPluginTest'
 
 dependencies {
 	compileOnly group: 'net.runelite', name:'client', version: runeLiteVersion
@@ -30,7 +30,8 @@ dependencies {
 	testAnnotationProcessor 'org.projectlombok:lombok:1.18.30'
 }
 
-group = 'com.pixelpetpals'
+group = 'com.activitywebhook'
+description = 'Activity Webhook: sends your own OSRS activity as JSON to a URL you choose (RuneLite plugin)'
 version = '0.1.0'
 
 tasks.withType(JavaCompile).configureEach {

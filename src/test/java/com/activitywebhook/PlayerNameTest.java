@@ -1,4 +1,4 @@
-package com.pixelpetpals;
+package com.activitywebhook;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonParser;
@@ -22,7 +22,7 @@ public class PlayerNameTest
 	private final TestSupport.Settings s = new TestSupport.Settings();
 	private EventSender sender;
 	private final TestSupport.MutableClock clock = new TestSupport.MutableClock(1_000_000);
-	private final PetEvent.Activity wc = new PetEvent.Activity("skilling", "Woodcutting", null);
+	private final WebhookEvent.Activity wc = new WebhookEvent.Activity("skilling", "Woodcutting", null);
 
 	/** Test-only stand-in for the game's Player (only getName is used). */
 	static Player player(String name)
@@ -53,16 +53,16 @@ public class PlayerNameTest
 		String cached = null;
 		for (int tick = 0; tick < 100; tick++)
 		{
-			cached = PixelPetPalsPlugin.cachedName(false, cached, me);
+			cached = ActivityWebhookPlugin.cachedName(false, cached, me);
 		}
 		assertNull(cached);
 		assertEquals("getName() must not be called with the option off", 0, calls.get());
 		// Turned on: read once, then cached; turned off again: cleared without another call.
-		cached = PixelPetPalsPlugin.cachedName(true, cached, me);
-		cached = PixelPetPalsPlugin.cachedName(true, cached, me);
+		cached = ActivityWebhookPlugin.cachedName(true, cached, me);
+		cached = ActivityWebhookPlugin.cachedName(true, cached, me);
 		assertEquals("Zezima", cached);
 		assertEquals(1, calls.get());
-		assertNull(PixelPetPalsPlugin.cachedName(false, cached, me));
+		assertNull(ActivityWebhookPlugin.cachedName(false, cached, me));
 		assertEquals(1, calls.get());
 	}
 
@@ -93,7 +93,7 @@ public class PlayerNameTest
 	@Test
 	public void defaultIsOff()
 	{
-		assertFalse(new PixelPetPalsConfig() { }.useInGameName());
+		assertFalse(new ActivityWebhookConfig() { }.useInGameName());
 	}
 
 	@Test
@@ -109,7 +109,7 @@ public class PlayerNameTest
 	public void onUsesInGameName() throws Exception
 	{
 		s.useInGame = true;
-		s.inGame = PixelPetPalsPlugin.readName(player("Zezima"));
+		s.inGame = ActivityWebhookPlugin.readName(player("Zezima"));
 		assertEquals("Zezima", sentPlayer());
 	}
 
@@ -126,10 +126,10 @@ public class PlayerNameTest
 	public void onWithNullLocalPlayerSendsNothing() throws Exception
 	{
 		s.useInGame = true;
-		assertNull(PixelPetPalsPlugin.readName(null));
-		assertNull(PixelPetPalsPlugin.readName(player(null)));
-		assertNull(PixelPetPalsPlugin.readName(player("  ")));
-		s.inGame = PixelPetPalsPlugin.readName(null);
+		assertNull(ActivityWebhookPlugin.readName(null));
+		assertNull(ActivityWebhookPlugin.readName(player(null)));
+		assertNull(ActivityWebhookPlugin.readName(player("  ")));
+		s.inGame = ActivityWebhookPlugin.readName(null);
 		assertNull(EventSender.activePlayer(s));
 		sender.queueLogin(s);
 		sender.queueLevelUp(s, "Mining", 50);

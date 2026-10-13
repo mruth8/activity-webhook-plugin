@@ -1,4 +1,4 @@
-package com.pixelpetpals;
+package com.activitywebhook;
 
 import com.google.gson.Gson;
 import java.io.IOException;
@@ -173,7 +173,7 @@ public class EventSender
 	}
 
 	/** Call once per game tick (and on logout). current may be null when not logged in. Returns true if a request was enqueued. */
-	public boolean tick(Settings s, PetEvent.Activity current)
+	public boolean tick(Settings s, WebhookEvent.Activity current)
 	{
 		String player = ensureActive(s);
 		if (player == null)
@@ -193,7 +193,7 @@ public class EventSender
 		return true;
 	}
 
-	private void post(HttpUrl url, String secret, PetEvent e, int gen)
+	private void post(HttpUrl url, String secret, WebhookEvent e, int gen)
 	{
 		Request.Builder rb = new Request.Builder().url(url).post(RequestBody.create(JSON, gson.toJson(e)));
 		if (secret != null && !secret.isEmpty())
@@ -207,7 +207,7 @@ public class EventSender
 				@Override
 				public void onFailure(Call call, IOException ex)
 				{
-					log.debug("pixel pet pals: send failed: {}", ex.toString());
+					log.debug("activity webhook: send failed: {}", ex.toString());
 					throttle.onResult(gen, clock.millis(), false);
 				}
 
@@ -219,7 +219,7 @@ public class EventSender
 						boolean ok = r.isSuccessful();
 						if (!ok)
 						{
-							log.debug("pixel pet pals: endpoint answered HTTP {}", r.code());
+							log.debug("activity webhook: endpoint answered HTTP {}", r.code());
 						}
 						throttle.onResult(gen, clock.millis(), ok);
 					}
@@ -228,7 +228,7 @@ public class EventSender
 		}
 		catch (RuntimeException ex)
 		{
-			log.debug("pixel pet pals: could not enqueue: {}", ex.toString());
+			log.debug("activity webhook: could not enqueue: {}", ex.toString());
 			throttle.onResult(gen, clock.millis(), false);
 		}
 	}

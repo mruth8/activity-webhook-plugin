@@ -1,4 +1,4 @@
-package com.pixelpetpals;
+package com.activitywebhook;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -19,7 +19,7 @@ public class EventSenderTest
 	private final TestSupport.MutableClock clock = new TestSupport.MutableClock(1_000_000);
 	private final TestSupport.Settings s = new TestSupport.Settings();
 	private EventSender sender;
-	private final PetEvent.Activity wc = new PetEvent.Activity("skilling", "Woodcutting", null);
+	private final WebhookEvent.Activity wc = new WebhookEvent.Activity("skilling", "Woodcutting", null);
 
 	@Before
 	public void up() throws Exception
@@ -100,9 +100,9 @@ public class EventSenderTest
 		server.takeRequest(5, TimeUnit.SECONDS);
 		waitIdle();
 		clock.ms += 3_000;
-		assertFalse("3 s later: still inside 5 s", sender.tick(s, new PetEvent.Activity("banking", null, null)));
+		assertFalse("3 s later: still inside 5 s", sender.tick(s, new WebhookEvent.Activity("banking", null, null)));
 		clock.ms += 2_000;
-		assertTrue(sender.tick(s, new PetEvent.Activity("banking", null, null)));
+		assertTrue(sender.tick(s, new WebhookEvent.Activity("banking", null, null)));
 	}
 
 	@Test

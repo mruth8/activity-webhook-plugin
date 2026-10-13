@@ -47,12 +47,12 @@ fi
 
 set +e
 PPP_RELAY_URL="http://127.0.0.1:$PORT/events" PPP_RELAY_SECRET="$SECRET" \
-  ./gradlew test --tests com.pixelpetpals.RelayE2ETest --rerun-tasks -i >"$OUT" 2>&1
+  ./gradlew test --tests com.activitywebhook.RelayE2ETest --rerun-tasks -i >"$OUT" 2>&1
 rc=$?
 set -e
 sed -n -E '/relay [0-9]{3} <-|RelayE2ETest >|BUILD/p' "$OUT"
 if [ "$rc" -ne 0 ]; then echo "e2e: FAIL (gradle exit $rc)" >&2; sed -n -E '/Exception|expected|rejected/{p;}' "$OUT" | sed -n 1,5p >&2; exit "$rc"; fi
-XML=build/test-results/test/TEST-com.pixelpetpals.RelayE2ETest.xml
+XML=build/test-results/test/TEST-com.activitywebhook.RelayE2ETest.xml
 grep -q 'tests="1" skipped="0" failures="0" errors="0"' "$XML" || { echo "e2e: FAIL (RelayE2ETest did not run and pass, e.g. skipped): $(sed -n 2p "$XML")" >&2; exit 1; }
 n="$(grep -c 'relay 204 <-' "$OUT")"
 echo "--- relay log"; cat "$LOG"

@@ -1,4 +1,4 @@
-package com.pixelpetpals;
+package com.activitywebhook;
 
 import org.junit.Test;
 import static org.junit.Assert.*;
@@ -6,11 +6,11 @@ import static org.junit.Assert.*;
 public class ThrottleTest
 {
 	private final EventFactory f = new EventFactory(new TestSupport.MutableClock(0));
-	private final PetEvent.Activity wc = new PetEvent.Activity("skilling", "Woodcutting", null);
-	private final PetEvent.Activity bank = new PetEvent.Activity("banking", null, null);
+	private final WebhookEvent.Activity wc = new WebhookEvent.Activity("skilling", "Woodcutting", null);
+	private final WebhookEvent.Activity bank = new WebhookEvent.Activity("banking", null, null);
 	private static final long MIN = 5_000;
 
-	private Throttle.Decision d(Throttle t, long now, PetEvent.Activity a)
+	private Throttle.Decision d(Throttle t, long now, WebhookEvent.Activity a)
 	{
 		return t.decide(now, MIN, a.key(), () -> f.state("M", a), () -> f.heartbeat("M", a));
 	}

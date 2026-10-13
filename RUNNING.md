@@ -1,6 +1,7 @@
-# Running Pixel Pet Pals locally (dev client)
+# Running Activity Webhook locally (dev client)
 
-You need JDK 11, Node 18+ and a checkout of the companion repo (relay + widget), e.g. `../osrs-companion`.
+You need JDK 11, Node 18+ and, as an example receiver, a checkout of the Pixel Pet Pals companion repo
+(relay + widget), e.g. `../osrs-companion`.
 
 ## 1. Start the relay (loopback only)
 
@@ -20,16 +21,16 @@ Options: `&size=compact`, `&variant=…`, `&player=<your display name>` (only sh
 ## 3. Run RuneLite in developer mode with the plugin
 
 ```
-cd pixel-pet-pals-plugin
+cd pixel-pet-pals-plugin   # repo checkout of the Activity Webhook plugin
 ./gradlew run
 ```
 
-This runs `com.pixelpetpals.PixelPetPalsPluginTest` (the same pattern as runelite/example-plugin): it loads the
+This runs `com.activitywebhook.ActivityWebhookPluginTest` (the same pattern as runelite/example-plugin): it loads the
 plugin as a built-in and starts RuneLite with `--developer-mode --debug`. Log in with your account as usual.
 
 ## 4. Configure the plugin
 
-Configuration → **Pixel Pet Pals** → section "Data sharing (third party)":
+Configuration → **Activity Webhook** → section "Data sharing (third party)":
 
 1. Endpoint URL: `http://127.0.0.1:8787/events` (plain http is only allowed to localhost/127.0.0.1/[::1]; anything else needs https)
 2. Shared secret: same as `PET_SECRET` (or leave empty if the relay has none)

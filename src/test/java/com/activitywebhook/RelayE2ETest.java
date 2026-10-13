@@ -1,4 +1,4 @@
-package com.pixelpetpals;
+package com.activitywebhook;
 
 import com.google.gson.Gson;
 import java.util.Arrays;
@@ -27,19 +27,19 @@ public class RelayE2ETest
 		OkHttpClient http = new OkHttpClient();
 		Gson gson = new Gson();
 		EventFactory f = new EventFactory(java.time.Clock.systemUTC());
-		List<PetEvent> events = Arrays.asList(
+		List<WebhookEvent> events = Arrays.asList(
 			f.login("Matthew"),
-			f.state("Matthew", new PetEvent.Activity("skilling", "Woodcutting", null)),
-			f.state("Matthew", new PetEvent.Activity("skilling", "Mining", null)),
-			f.state("Matthew", new PetEvent.Activity("skilling", "Fishing", null)),
-			f.state("Matthew", new PetEvent.Activity("combat", null, null)),
-			f.state("Matthew", new PetEvent.Activity("combat", null, "Hill Giant")),
-			f.state("Matthew", new PetEvent.Activity("banking", null, null)),
+			f.state("Matthew", new WebhookEvent.Activity("skilling", "Woodcutting", null)),
+			f.state("Matthew", new WebhookEvent.Activity("skilling", "Mining", null)),
+			f.state("Matthew", new WebhookEvent.Activity("skilling", "Fishing", null)),
+			f.state("Matthew", new WebhookEvent.Activity("combat", null, null)),
+			f.state("Matthew", new WebhookEvent.Activity("combat", null, "Hill Giant")),
+			f.state("Matthew", new WebhookEvent.Activity("banking", null, null)),
 			f.levelUp("Matthew", "Woodcutting", 70),
-			f.heartbeat("Matthew", new PetEvent.Activity("banking", null, null)),
+			f.heartbeat("Matthew", new WebhookEvent.Activity("banking", null, null)),
 			f.state("Matthew", ActivityTracker.IDLE),
 			f.logout("Matthew"));
-		for (PetEvent e : events)
+		for (WebhookEvent e : events)
 		{
 			String body = gson.toJson(e);
 			Request.Builder rb = new Request.Builder().url(url).post(RequestBody.create(MediaType.parse("application/json"), body));

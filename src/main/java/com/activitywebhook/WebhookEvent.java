@@ -1,4 +1,4 @@
-package com.pixelpetpals;
+package com.activitywebhook;
 
 import java.util.Map;
 import java.util.Objects;
@@ -10,7 +10,7 @@ import lombok.Value;
  * activity.region is never set (no location is sent).
  */
 @Value
-public class PetEvent
+public class WebhookEvent
 {
 	int v = 1;
 	String player;

@@ -1,4 +1,4 @@
-package com.pixelpetpals;
+package com.activitywebhook;
 
 import java.time.Clock;
 import java.time.Instant;
