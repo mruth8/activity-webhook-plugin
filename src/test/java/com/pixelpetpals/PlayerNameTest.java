@@ -21,6 +21,7 @@ public class PlayerNameTest
 	private MockWebServer server;
 	private final TestSupport.Settings s = new TestSupport.Settings();
 	private EventSender sender;
+	private final TestSupport.MutableClock clock = new TestSupport.MutableClock(1_000_000);
 	private final PetEvent.Activity wc = new PetEvent.Activity("skilling", "Woodcutting", null);
 
 	/** Test-only stand-in for the game's Player (only getName is used). */
@@ -70,7 +71,7 @@ public class PlayerNameTest
 	{
 		server = new MockWebServer();
 		server.start(java.net.InetAddress.getByName("127.0.0.1"), 0);
-		sender = new EventSender(new OkHttpClient(), new Gson(), new TestSupport.MutableClock(1_000_000));
+		sender = new EventSender(new OkHttpClient(), new Gson(), clock);
 		s.url = "http://127.0.0.1:" + server.getPort() + "/events";
 		s.name = "TypedAlias";
 	}
@@ -135,5 +136,58 @@ public class PlayerNameTest
 		assertFalse(sender.tick(s, wc));
 		assertNull(server.takeRequest(300, TimeUnit.MILLISECONDS));
 		assertEquals(0, server.getRequestCount());
+	}
+
+	/** Mirrors the plugin's per-tick flow: name read, pending login queued once sendable, then sender.tick. */
+	private void loginThenNameResolvesAfter(int ticks) throws Exception
+	{
+		s.useInGame = true;
+		s.name = "";
+		s.inGame = null;
+		boolean loginPending = true;   // GameState LOGGED_IN seen
+		for (int i = 0; i < 6; i++)
+		{
+			server.enqueue(new MockResponse().setResponseCode(204));
+		}
+		java.util.List<String> types = new java.util.ArrayList<>();
+		for (int tick = 0; tick < 30; tick++)
+		{
+			if (tick == ticks)
+			{
+				s.inGame = "Zezima";   // local player's name becomes readable on this tick
+			}
+			if (loginPending && EventSender.activePlayer(s) != null)
+			{
+				loginPending = false;
+				sender.queueLogin(s);
+			}
+			sender.tick(s, wc);
+			RecordedRequest r = server.takeRequest(200, TimeUnit.MILLISECONDS);
+			if (r != null)
+			{
+				com.google.gson.JsonObject o = new JsonParser().parse(r.getBody().readUtf8()).getAsJsonObject();
+				assertEquals("Zezima", o.get("player").getAsString());
+				types.add(o.get("type").getAsString());
+				long t0 = System.currentTimeMillis();
+				while (sender.throttle().inFlight() && System.currentTimeMillis() - t0 < 5000)
+				{
+					Thread.sleep(5);
+				}
+			}
+			clock.ms += 600;   // one game tick
+		}
+		assertEquals("exactly one login, then the activity", java.util.Arrays.asList("login", "activity"), types);
+	}
+
+	@Test
+	public void nameResolvingOneTickAfterLoginSendsOneLoginThenActivity() throws Exception
+	{
+		loginThenNameResolvesAfter(1);
+	}
+
+	@Test
+	public void nameResolvingThreeTicksAfterLoginSendsOneLoginThenActivity() throws Exception
+	{
+		loginThenNameResolvesAfter(3);
 	}
 }

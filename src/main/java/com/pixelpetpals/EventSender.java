@@ -115,7 +115,7 @@ public class EventSender
 
 	public void queueLevelUp(Settings s, String skill, int level)
 	{
-		String p = activePlayer(s);
+		String p = ensureActive(s);
 		if (p != null)
 		{
 			throttle.queue(factory.levelUp(p, skill, level));
@@ -124,7 +124,7 @@ public class EventSender
 
 	public void queueLogin(Settings s)
 	{
-		String p = activePlayer(s);
+		String p = ensureActive(s);
 		if (p != null)
 		{
 			throttle.drop("logout");   // a logout that never got out is stale now: discard it
@@ -134,11 +134,36 @@ public class EventSender
 
 	public void queueLogout(Settings s)
 	{
-		String p = activePlayer(s);
+		String p = ensureActive(s);
 		if (p != null)
 		{
 			throttle.queue(factory.logout(p));
 		}
+	}
+
+	/**
+	 * Tracks the sendable/not-sendable transition and returns the player to send as (null = not sendable).
+	 * On becoming sendable the throttle is cleared BEFORE anything new is queued, so only events from the
+	 * non-sendable period are dropped; an event queued right after the transition (e.g. the login on the tick the
+	 * in-game name resolves, or a logout right after a config change) survives.
+	 */
+	String ensureActive(Settings s)
+	{
+		String player = activePlayer(s);
+		if (player == null)
+		{
+			if (active)
+			{
+				throttle.reset();
+			}
+			active = false;
+		}
+		else if (!active)
+		{
+			throttle.reset();
+			active = true;
+		}
+		return player;
 	}
 
 	public void reset()
@@ -150,21 +175,10 @@ public class EventSender
 	/** Call once per game tick (and on logout). current may be null when not logged in. Returns true if a request was enqueued. */
 	public boolean tick(Settings s, PetEvent.Activity current)
 	{
-		String player = activePlayer(s);
+		String player = ensureActive(s);
 		if (player == null)
 		{
-			if (active)
-			{
-				throttle.reset();
-			}
-			active = false;
 			return false;
-		}
-		if (!active)
-		{
-			// Just enabled (or URL/name became valid): start clean, send fresh current state only.
-			throttle.reset();
-			active = true;
 		}
 		long now = clock.millis();
 		long minMs = minIntervalMs(s.minIntervalSeconds());

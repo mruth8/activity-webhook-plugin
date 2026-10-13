@@ -84,6 +84,7 @@ exponentially: 5 s, 10 s, 20 s, … up to 5 min.
 ```
 ./gradlew build test            # JDK 11
 scripts/e2e.sh ../osrs-companion  # posts plugin-built events to the real relay, which validates them
+PPP_RELAY_PORT=8799 scripts/e2e.sh ../osrs-companion   # same, on a fixed port (default: random free port)
 ```
 
 See [RUNNING.md](RUNNING.md) to try it in a RuneLite dev client with the local relay and widget.

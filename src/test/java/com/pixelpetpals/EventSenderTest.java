@@ -222,4 +222,40 @@ public class EventSenderTest
 		}
 		assertEquals(1, sender.throttle().failures());
 	}
+
+	private String onlyRequestType() throws Exception
+	{
+		RecordedRequest r = server.takeRequest(5, TimeUnit.SECONDS);
+		assertNotNull(r);
+		String type = new JsonParser().parse(r.getBody().readUtf8()).getAsJsonObject().get("type").getAsString();
+		waitIdle();
+		assertNull("nothing else sent", server.takeRequest(300, TimeUnit.MILLISECONDS));
+		return type;
+	}
+
+	@Test
+	public void logoutRightAfterConfigChangeIsSentNotHeartbeat() throws Exception
+	{
+		server.enqueue(new MockResponse().setResponseCode(204));
+		assertTrue(sender.tick(s, wc));
+		server.takeRequest(5, TimeUnit.SECONDS);
+		waitIdle();
+		clock.ms += 1_000;
+		sender.reset();   // onConfigChanged
+		server.enqueue(new MockResponse().setResponseCode(204));
+		sender.queueLogout(s);   // GameState LOGIN_SCREEN, no tick in between
+		assertTrue(sender.tick(s, null));
+		assertEquals("logout", onlyRequestType());
+	}
+
+	@Test
+	public void logoutRightAfterPluginStartIsSent() throws Exception
+	{
+		EventSender fresh = new EventSender(new OkHttpClient(), new Gson(), clock);   // startUp
+		sender = fresh;
+		server.enqueue(new MockResponse().setResponseCode(204));
+		fresh.queueLogout(s);
+		assertTrue(fresh.tick(s, null));
+		assertEquals("logout", onlyRequestType());
+	}
 }

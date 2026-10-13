@@ -2,13 +2,20 @@
 # End-to-end: start the real relay (osrs-companion/relay/server.js) on a free loopback port with a random shared
 # secret, verify it is up and that it is OUR relay process answering on that port, then run RelayE2ETest, which posts
 # plugin-built events and expects the relay to accept (validate) them. Exits nonzero on any failure.
-# Usage: scripts/e2e.sh [path-to-osrs-companion]   (default ../osrs-companion)
+# Usage: [PPP_RELAY_PORT=8799] scripts/e2e.sh [path-to-osrs-companion]   (default ../osrs-companion)
 # Self-test: PPP_E2E_KILL_RELAY=1 stops the relay before the test runs; the script must then fail.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 COMP="${1:-../osrs-companion}"
 [ -f "$COMP/relay/server.js" ] || { echo "e2e: no relay at $COMP/relay/server.js" >&2; exit 2; }
-PORT="$(node -e 'const s=require("net").createServer().listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close()})')"
+# PPP_RELAY_PORT pins the port (still verified to be held by our relay pid); otherwise a random free port.
+if [ -n "${PPP_RELAY_PORT:-}" ]; then
+  [[ "$PPP_RELAY_PORT" =~ ^[0-9]+$ ]] && [ "$PPP_RELAY_PORT" -ge 1 ] && [ "$PPP_RELAY_PORT" -le 65535 ] \
+    || { echo "e2e: bad PPP_RELAY_PORT=$PPP_RELAY_PORT" >&2; exit 2; }
+  PORT="$PPP_RELAY_PORT"
+else
+  PORT="$(node -e 'const s=require("net").createServer().listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close()})')"
+fi
 SECRET="e2e-$(node -e 'console.log(require("crypto").randomBytes(8).toString("hex"))')"
 LOG="$(mktemp)"; OUT="$(mktemp)"
 PORT="$PORT" PET_SECRET="$SECRET" node "$COMP/relay/server.js" >"$LOG" 2>&1 &
