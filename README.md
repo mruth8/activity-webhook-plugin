@@ -6,7 +6,7 @@ One example receiver is the **Pixel Pet Pals** relay (`node relay/server.js` in 
 
 Package: `com.activitywebhook` · Config group: `activitywebhook`
 
-<!-- TODO: add icon.png (max 48x72 px at repo root) -->
+
 
 ## Privacy and data sharing
 
