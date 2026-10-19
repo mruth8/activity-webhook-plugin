@@ -36,13 +36,13 @@ Configuration → **Activity Webhook** → section **Data sharing (third party)*
 
 ## Event JSON format (v1)
 
-One HTTP `POST` per event to your **Endpoint URL**, with `Content-Type: application/json` and, if set, header `X-Pet-Secret: <sharedSecret>`.
+One HTTP `POST` per event to your **Endpoint URL**, with `Content-Type: application/json; charset=utf-8` and, if set, header `X-Pet-Secret: <sharedSecret>`.
 
 | Field | Value |
 |---|---|
 | `v` | Always `1` |
 | `player` | Typed display name, or RuneScape name if **Use my in-game name** is on (trimmed, max 64 chars) |
-| `ts` | Send time, ISO 8601 UTC to the second, e.g. `2026-10-13T16:50:14Z` |
+| `ts` | When the event was created (queued events such as login, logout and level-up keep their original time), ISO 8601 UTC to the second, e.g. `2026-10-13T16:50:14Z` |
 | `type` | One of `login`, `logout`, `activity`, `idle`, `level_up`, `heartbeat` |
 | `activity.category` | `skilling`, `combat`, `banking`, or `idle` (on `activity`, `idle`, and `heartbeat` events) |
 | `activity.skill` | `Woodcutting`, `Mining`, or `Fishing` when `category` is `skilling` |
@@ -56,7 +56,7 @@ One HTTP `POST` per event to your **Endpoint URL**, with `Content-Type: applicat
 ```http
 POST /events HTTP/1.1
 Host: 127.0.0.1:8787
-Content-Type: application/json
+Content-Type: application/json; charset=utf-8
 X-Pet-Secret: your-optional-secret
 ```
 
