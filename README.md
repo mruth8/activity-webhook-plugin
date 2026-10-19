@@ -6,7 +6,7 @@ One example receiver is the **Pixel Pet Pals** relay (`node relay/server.js` in 
 
 Package: `com.activitywebhook` · Config group: `activitywebhook`
 
-<!-- TODO: add icon.png (max 48x72 px at repo root) and README screenshots for Plugin Hub -->
+<!-- TODO: add icon.png (max 48x72 px at repo root) -->
 
 ## Privacy and data sharing
 
@@ -23,6 +23,10 @@ Package: `com.activitywebhook` · Config group: `activitywebhook`
 ## Configuration
 
 Configuration → **Activity Webhook** → section **Data sharing (third party)**:
+
+![RuneLite Activity Webhook settings panel](docs/images/settings.png)
+
+*Plugin settings: endpoint URL, shared secret, display name, and related options.*
 
 | Option | Config key | Default | Meaning |
 |---|---|---|---|
@@ -72,6 +76,10 @@ X-Pet-Secret: your-optional-secret
   }
 }
 ```
+
+![Example activity event JSON received at a test webhook](docs/images/event-example.png)
+
+*Example event received at a test webhook*
 
 Other examples: `{"v":1,"player":"Matthew","ts":"…","type":"login"}`, `{"v":1,"player":"Matthew","ts":"…","type":"level_up","detail":{"skill":"Mining","level":61}}`, heartbeat with current `activity`, and combat with optional `"target":"Hill Giant"`.
 
